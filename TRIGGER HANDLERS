@@ -1,0 +1,46 @@
+// default session values
+session_map = Map();
+// Filter values
+session_map.put("joblist",{});
+session_map.put("experience",-1);
+session_map.put("salary",{});
+session_map.put("location","");
+// State
+session_map.put("state","init");
+session_map.put("display","");
+// FFlag used to trigger display cards of opening jobs
+session_map.put("new",true);
+// Used in job op context for whether initial input is "Display all" or not
+session_map.put("phoneverified","");
+// Corresponding email address to verified phone no
+session_map.put("phoneno","");
+// Cache the phone no
+session_map.put("email","");
+// Cache email check
+session_map.put("email_confirm",false);
+session_map.put("email_asked",false);
+// Cache the email
+zoho.salesiq.visitorsession.set("ateam",session_map,"session");
+info zoho.salesiq.visitorsession.get("ateam","session").get("data"); // Outputs {}
+// Sadly the visitorsession isn't storing the data as when I invoke get, it returns NULL data
+// I've deployed my own server on linode for temp
+// It stores and returns the data [http://172.232.105.158:3000/visitor/{id}]
+// Note : It auto deletes the stored data for every 30 mins and has 10 kb as limit
+conv_id = visitor.get("ip");
+// Decided to use this property since other values aren't consistent
+headers = Map();
+headers.put("jsondata",session_map);
+// It is using Express.js and pm2 fyi
+rep = invokeurl
+[
+	url :"http://172.232.105.158:3000/visitor/" + conv_id
+	type :POST
+	headers:headers
+];
+// info getUrl("http://172.232.105.158:3000/visitor/"+ conv_id);
+// Your typical driver script
+response = Map();
+response.put("action","reply");
+response.put("replies",{"Hello there! 👋 Looking for anything specific? "});
+response.put("suggestions",{"🌐 Explore job opportunities.","👤 Check my status as an existing user.","❓ Learn about this website's purpose."});
+return response;
