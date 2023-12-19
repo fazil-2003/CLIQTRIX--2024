@@ -1,0 +1,35 @@
+response = Map();
+msg = message.get("text");
+operation = message.get("operation");
+url = "http://172.232.105.158:3000/visitor/" + visitor.get("ip");
+session = getUrl(url);
+if(msg.equalsIgnoreCase("🌐 Explore job opportunities."))
+{
+	response.put("action","context");
+	response.put("context_id","job_opportunities");
+	question = {"name":"job_opportunities","replies":{"Awesome, let's get started! Would you like apply for specific specialization field or display all opening job list?"}};
+	question.put("suggestions",{"🔍 Select a specific field.","📋 Display every job opening info!"});
+	response.put("questions",{question});
+}
+else if(msg.equalsIgnoreCase("👤 Check my status as an existing user."))
+{
+	response.put("action","context");
+	response.put("context_id","existing");
+	question = {"name":"email","replies":{{"text":"Certainly! To assist you further, could you please provide your email details regarding the status you're inquiring about","validate":{"format":"email","error":{"Please enter a valid email"}},"field_name":"siq_email"}},"input":{"type":"email","placeholder":"Enter your email here","value":session.get("email")}};
+	response.put("questions",{question});
+}
+else if(msg.equalsIgnoreCase("❓ Learn about this website's purpose."))
+{
+	response.put("action","reply");
+	response.put("replies",{"Welcome! Our platform facilitates seamless access to a curated list of job openings and empowers HR professionals to efficiently manage the hiring process. How may I assist you further? (e.g., exploring job opportunities, posting new positions, or navigating through candidate profiles)"});
+	response.put("suggestions",{"🌐 Explore job opportunities.","👤 Check my status as an existing user.","❓ Learn about this website's purpose."});
+}
+else
+{
+	// Handle other scenarios or fallback replies
+	response.put("action","reply");
+	response.put("replies",{"Greetings! 👋 How may I be of assistance to you today? 😊"});
+	response.put("suggestions",{"🌐 Explore job opportunities.","👤 Check my status as an existing user.","❓ Learn about this website's purpose."});
+	return response;
+}
+return response;
