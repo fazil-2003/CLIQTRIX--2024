@@ -1,0 +1,949 @@
+response = Map();
+response.put("action","context");
+response.put("context_id",context_id);
+replies = List();
+questions = Map();
+url = "http://172.232.105.158:3000/visitor/" + visitor.get("ip");
+session = getUrl(url);
+// Please do refer trigger handler for brief information regarding workaround for visitorsession
+if(context_id.contains("job_opportunities"))
+{
+	// Fetching the 3rd party job opening values
+	dropdownJobValue = list();
+	dropdownJobLocation = list();
+	// Correspond to drop down list value with job title as label.
+	jobMap = Map();
+	// Contains job salary values corresponding to title-company index
+	jobSalary = Map();
+	// Contains job location similar to jobSalary index
+	jobLocation = Map();
+	jobLocationCount = Map();
+	// City as index and its corresponding number of job count as value
+	// contains job experience as value {low, high}
+	jobExperience = Map();
+	// Contains "{job title}-{company name}" as index and it's job details as value.
+	jobValues = zoho.recruit.getRecords("JobOpenings",1,200,"ALL","Job Opening Title","desc","idk");
+	// Fetches value from zoho recruit
+	if(jobValues != null && jobValues.size() > 0)
+	{
+		noDuplicates = list();
+		// To check if duplicate job type occurred
+		// We don't want empty list or null value
+		// Iterate over jobs in the value and sort them for jobMap, dropdownJobValue
+		i = 0;
+		for each  job in jobValues
+		{
+			key = job.get("Posting Title") + "-" + job.get("Department Name");
+			// dropdown config values
+			dropdownElement = Map();
+			dropdownElement.put("value",i);
+			dropdownElement.put("label",job.get("Posting Title"));
+			dropdownElement.put("selected",session.get("joblist").contains(job.get("Posting Title")));
+			// Saved pref
+			if(!noDuplicates.contains(job.get("Posting Title")))
+			{
+				dropdownJobValue.add(dropdownElement);
+				noDuplicates.add(job.get("Posting Title"));
+			}
+			dropdownElementLocation = Map();
+			dropdownElementLocation.put("value",i);
+			dropdownElementLocation.put("label",job.get("City"));
+			dropdownElementLocation.put("selected",session.get("location").contains(job.get("City")));
+			// Saved pref
+			if(!noDuplicates.contains(job.get("City")))
+			{
+				dropdownJobLocation.add(dropdownElementLocation);
+				noDuplicates.add(job.get("City"));
+			}
+			i = i + 1;
+			loc = job.get("City");
+			if(jobLocationCount.containsKey(loc))
+			{
+				jobLocationCount.put(loc,jobLocationCount.get(loc) + 1);
+			}
+			else
+			{
+				jobLocationCount.put(loc,1);
+			}
+			//
+			// Stores ['title-company' : data]
+			jobMap.put(key,job);
+			jobSalary.put(key,job.get("Salary").toNumber());
+			jobLocation.put(key,job.get("City"));
+			exp = job.get("Work Experience").removeAllAlpha().toList("-");
+			// Since experience has range value
+			jobExperience.put(key,exp);
+			// Jobid to job data
+			jobMap.put(job.get("JOBOPENINGID"),job);
+		}
+		// 		i=0;
+		// 		newLocList = [];
+		// 		// Appending the number of job count to job location selection values
+		// 		for each obj in dropdownJobLocation {
+		// 			name = obj.get("label");
+		// 			val = "";
+		// 			if(jobLocationCount.containsKey(name)) {
+		// 				val = name + " ( " + jobLocationCount.get(name) + " ) " ;
+		// 			} else {
+		// 				val = name + " ( No jobs available for this city ) ";
+		// 			}
+		// 			obj.put("label", val);
+		// 			i+=1;
+		// 		}
+	}
+	else
+	{
+		// Suppose fetching went wrong, what shall we do?
+		response.put("questions",{"name":"error","replies":{{"text":"Error occurred while fetching"}}});
+		return response;
+	}
+	// fetched 3rd party resource
+	// Displaying details of specific job : Apply now / Back to display
+	if(session.get("state").equals("details"))
+	{
+		reply = answers.get("job_details").get("text");
+		if(reply.equals("🌟 Apply now"))
+		{
+			session.put("state","applynow");
+			session.put("jobid",answers.get("jobcard").get("meta").get("card_data").get("value").get("action").get("name"));
+		}
+		else if(reply.equals("🚫 Not interested"))
+		{
+			session.put("state","display");
+			session.put("display","");
+		}
+	}
+	// Displaying get details / Apply now / Change filters
+	if(session.get("display").equals("shown"))
+	{
+		// Input pressed from opening job cards
+		session.put("display","");
+		jobcardText = answers.get("jobcard");
+		if(jobcardText.get("text").contains("-"))
+		{
+			// Check if get details or apply now
+			if(jobcardText.get("text").contains("Get Details"))
+			{
+				session.put("state","details");
+				// Display the details of the job
+				job = jobcardText.get("meta").get("card_data").get("value").get("action").get("name");
+				// ID
+				job = jobMap.get(job);
+				// index to job id -> object value
+				i = Map();
+				// Job Information
+				i.put("📌 Posting Title",job.get("Posting Title"));
+				i.put("🏢 Department Name",job.get("Department Name"));
+				i.put("💼 Job Type",job.get("Job Type"));
+				i.put("👥 Number of Positions",job.get("Number of Positions"));
+				i.put("🌆 City",job.get("City"));
+				i.put("🌍 Country",job.get("Country"));
+				i.put("🌐 Remote Job",job.get("Remote Job"));
+				i.put("🏭 Industry",job.get("Industry"));
+				i.put("👔 Work Experience",job.get("Work Experience"));
+				i.put("💰 Salary",job.get("Salary"));
+				i.put("🎯 Target Date",job.get("Target Date"));
+				i.put("📅 Date Opened",job.get("Date Opened"));
+				// Applicant Information
+				i.put("📥 No of Applications",job.get("No of Applications"));
+				i.put("📤 No of Applications Hired",job.get("No of Applications Hired"));
+				// Status Information
+				i.put("🚀 Job Opening Status",job.get("Job Opening Status"));
+				i.put("🔥 Is Hot Job Opening",job.get("Is Hot Job Opening"));
+				// Display the information
+				out = List();
+				for each  ind in i.keys()
+				{
+					value = i.get(ind);
+					if(value.equalsIgnoreCase("false"))
+					{
+						value = "No";
+					}
+					else if(value.equalsIgnoreCase("true"))
+					{
+						value = "Yes";
+					}
+					out.add(ind + " : " + value);
+				}
+				response.put("questions",{{"name":"job_details","replies":out,"suggestions":{"🌟 Apply now","🚫 Not interested"}}});
+				rep = invokeurl
+				[
+					url :url
+					type :POST
+					headers:{"jsondata":session}
+				];
+				return response;
+			}
+			else
+			{
+				session.put("state","applynow");
+				session.put("jobid",jobcardText.get("meta").get("card_data").get("value").get("action").get("name"));
+			}
+			rep = invokeurl
+			[
+				url :url
+				type :POST
+				headers:{"jsondata":session}
+			];
+		}
+		else
+		{
+			session.put("state","init");
+			// Change the filter values again
+		}
+	}
+	// Check if apply now is triggered
+	if(session.get("state").equals("applynow"))
+	{
+		// Get email address
+		response.put("context_id","apply_job");
+		question = Map();
+		question.put("name","email");
+		question.put("input",{"type":"email","placeholder":"Your email address here","value":session.get("email")});
+		question.put("replies",{{"text":"Please enter your email address to proceed further","validate":{"format":"email","error":{"Please enter a valid email"}},"field_name":"siq_email"}});
+		response.put("questions",{question});
+		session.put("state","init");
+		// Going to next context, so current will be flushed
+		session.put("new",true);
+		// To enable display all cards again!
+		rep = invokeurl
+		[
+			url :url
+			type :POST
+			headers:{"jsondata":session}
+		];
+		return response;
+	}
+	// end of routing to apply now context. 
+	// Filters : 
+	//		1. Job position type
+	// 		2. Salary
+	//		3. Location
+	//		4. Experience
+	// Check if this context is new and initally "display all" is input
+	if(session.get("new") && answers.containsKey("job_opportunities") && answers.get("job_opportunities").get("text").equals(" 📋 Display every job opening info!"))
+	{
+		session.put("state","display");
+		// Display all state
+		session.put("new",false);
+		rep = invokeurl
+		[
+			url :url
+			type :POST
+			headers:{"jsondata":session}
+		];
+	}
+	// Check if options for filter has to be shown
+	if(session.get("state").contains("init"))
+	{
+		// Process the filters if given
+		if(session.get("state").contains("joblist"))
+		{
+			chosenJobs = list();
+			selected = answers.get("joblists").get("meta").get("card_data").get("value");
+			for each  val in selected
+			{
+				chosenJobs.add(val.get("label"));
+			}
+			session.put("joblist",chosenJobs);
+		}
+		else if(session.get("state").contains("salary"))
+		{
+			session.put("salary",answers.get("salary").get("meta").get("card_data").get("value"));
+		}
+		else if(session.get("state").contains("location"))
+		{
+			chosenJobs = list();
+			selected = answers.get("location").get("meta").get("card_data").get("value");
+			for each  val in selected
+			{
+				chosenJobs.add(val.get("label"));
+			}
+			session.put("location",chosenJobs);
+		}
+		else if(session.get("state").contains("experience"))
+		{
+			session.put("experience",answers.get("experience").get("meta").get("card_data").get("value").toNumber());
+		}
+		//
+		// Frame the question based on filters
+		question = list();
+		filters = "💼 Position Category : ";
+		if(session.get("joblist").size() > 0)
+		{
+			filters = filters + session.get("joblist").toString();
+		}
+		else
+		{
+			filters = filters + "All fields";
+		}
+		question.add(filters);
+		filters = "💰 Salary bracket : ";
+		if(session.get("salary").size() > 0)
+		{
+			salaryList = session.get("salary");
+			filters = filters + salaryList.get(0) + " to " + salaryList.get(1);
+		}
+		else
+		{
+			filters = filters + "All range";
+		}
+		question.add(filters);
+		filters = "🌐 Location Preference:  ";
+		if(session.get("location").size() > 0)
+		{
+			filters = filters + session.get("location").toString();
+		}
+		else
+		{
+			filters = filters + "All area";
+		}
+		question.add(filters);
+		filters = "📊 Experience: ";
+		if(session.get("experience") != -1)
+		{
+			filters = filters + session.get("experience").toWords("en-us") + " year(s) and below";
+		}
+		else
+		{
+			filters = filters + "Any years";
+		}
+		question.add(filters);
+		question.add("Which specific field you want adjust?");
+		question = {"name":"specificField","replies":question,"suggestions":{"📚 Position Category","💰 Salary Bracket","🌍 Location Preference","🕒 Experience","✅ I'm done, display the filtered jobs"}};
+		response.put("questions",{question});
+		// Update the session value
+		session.put("state","config");
+		rep = invokeurl
+		[
+			url :url
+			type :POST
+			headers:{"jsondata":session}
+		];
+		return response;
+	}
+	//
+	// Check if previous state was to config the filter
+	if(session.get("state").contains("config"))
+	{
+		cat = answers.get("specificField").get("text");
+		// Get what user input out of 4 types filter
+		if(cat.equals("📚 Position Category"))
+		{
+			questions.put("name","joblists");
+			questions.put("replies",{"Select the jobs that you prefer"});
+			questions.put("input",{"type":"drop-down","placeholder":"Choose one or more","options":dropdownJobValue,"select_label":"Select your choice","min_selection":1,"max_selection":dropdownJobValue.size(),"multiple":true});
+			response.put("questions",{questions});
+			session.put("state","init joblists");
+		}
+		else if(cat.equals("💰 Salary Bracket"))
+		{
+			questions.put("name","salary");
+			questions.put("replies",{"Select your desired salary range"});
+			questions.put("input",{"type":"range-slider","values":jobSalary.values().sort()});
+			response.put("questions",{questions});
+			session.put("state","init salary");
+		}
+		else if(cat.equals("🌍 Location Preference"))
+		{
+			questions.put("name","location");
+			questions.put("replies",{"Select your preferred location [city] "});
+			questions.put("input",{"type":"drop-down","placeholder":"Choose one or more","options":dropdownJobLocation,"select_label":"Select your choice","min_selection":1,"max_selection":dropdownJobLocation.size(),"multiple":true});
+			response.put("questions",{questions});
+			session.put("state","init location");
+		}
+		else if(cat.equals("🕒 Experience"))
+		{
+			questions.put("name","experience");
+			questions.put("replies",{"Select your years of experience "});
+			questions.put("input",{"type":"slider","values":{0,2,3,4,5,6,7,8,9}});
+			response.put("questions",{questions});
+			session.put("state","init experience");
+		}
+		else if(cat.equals("✅ I'm done, display the filtered jobs"))
+		{
+			session.put("state","display");
+		}
+		rep = invokeurl
+		[
+			url :url
+			type :POST
+			headers:{"jsondata":session}
+		];
+		if(!session.get("state").equals("display"))
+		{
+			return response;
+		}
+	}
+	// Check if we have to display filtered opening job cards
+	if(session.get("state").equals("display") && !session.get("display").equals("shown"))
+	{
+		session.put("display","shown");
+		// To store job card data here
+		jobCards = {};
+		// Output image mapping [DEMO]
+		outputImages = List();
+		outputImages.add("https://programiz.pro/resources/content/images/2023/04/software-engineer-daily-tasks-1.png");
+		outputImages.add("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTu85X_o--brnMN3L1sZJ1WwymimuAMWamOmL8P8vsl-qNmC7imB93oMsAhcEbl1jCH-dw&usqp=CAU");
+		outputImages.add("https://media.licdn.com/dms/image/D5612AQEBp4IqI6CKQw/article-cover_image-shrink_720_1280/0/1664264441530?e=2147483647&v=beta&t=6hHX46XKdVibYf2DjQZhIEKqCfEd8WjJUlSbazN0WmY");
+		outputImages.add("https://www.interviewbit.com/blog/wp-content/uploads/2021/07/Software-Engineer-Salary-in-India-800x391.jpg");
+		outputImages.add("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgBiqT_L-HK1UooSWkC0jq15Q145mKLyV_fPbViDlUD4eL3qtVYJ41M7KeR6xMa2Q3FfU&usqp=CAU");
+		i = 0;
+		duplicates = list();
+		for each  job in jobMap.values()
+		{
+			filter = true;
+			// Changes to false depending on filter conditions
+			// Checking the filter values to match
+			if(session.get("joblist").size() > 0)
+			{
+				if(!session.get("joblist").contains(job.get("Posting Title")))
+				{
+					filter = false;
+				}
+			}
+			if(session.get("salary").size() > 0)
+			{
+				jobSalaryValue = job.get("Salary").toNumber();
+				jobSalaryExpect = session.get("salary");
+				if(!(jobSalaryValue >= jobSalaryExpect.get(0) && jobSalaryValue <= jobSalaryExpect.get(1)))
+				{
+					filter = false;
+				}
+			}
+			if(session.get("location").size() > 0)
+			{
+				if(!session.get("location").contains(job.get("City")))
+				{
+					filter = false;
+				}
+			}
+			if(session.get("experience") > -1)
+			{
+				exp = job.get("Work Experience").removeAllAlpha().toList("-");
+				// Range value
+				currExp = session.get("experience").toNumber();
+				// 2nd value of range contains whitespace
+				if(!(currExp >= exp.get(0).toNumber() && currExp <= exp.get(1).replaceAll(" ","").toNumber()))
+				{
+					filter = false;
+				}
+			}
+			// Conditions are met
+			if(filter == true && !duplicates.contains(job.toString()))
+			{
+				remote = "🌐";
+				if(job.get("Remote Job").equalsIgnoreCase("false"))
+				{
+					remote = "🏢";
+				}
+				val = Map();
+				val.put("title",job.get("Department Name") + remote);
+				val.put("subtitle",job.get("Posting Title") + " [ " + job.get("Work Experience") + ", " + job.get("City") + " ]");
+				val.put("image",outputImages.get(i % 4));
+				// Two options, same type, similar id.
+				val.put("actions",{{"label":"Get Details","name":job.get("JOBOPENINGID"),"type":"client_action","id":job.get("JOBOPENINGID")},{"label":"Apply now","name":job.get("JOBOPENINGID"),"type":"client_action","id":job.get("JOBOPENINGID")}});
+				jobCards.add(val);
+				duplicates.add(job.toString());
+				i = i + 1;
+			}
+		}
+		// Now, displaying the job cards
+		questions = Map();
+		questions.put("name","jobcard");
+		// checking if job list exists under given conditions, if none, display it so
+		if(jobCards.size() == 0)
+		{
+			questions.put("replies",{"No jobs were found for given filter options, please try other values"});
+		}
+		else
+		{
+			questions.put("replies",{{"type":"multiple-product","text":"Alright, here's the opening job list","elements":jobCards}});
+		}
+		questions.put("suggestions",{"🔄 I want change filter values"});
+		response.put("questions",{questions});
+		rep = invokeurl
+		[
+			url :url
+			type :POST
+			headers:{"jsondata":session}
+		];
+	}
+}
+else if(context_id.contains("apply_job"))
+{
+	jobId = session.get("jobid");
+	email = answers.get("email").get("text");
+	session.put("email",email);
+	db_email = zoho.recruit.searchRecords("Candidates","Email|=|" + email,1,3,"(First Name,Mobile,CANDIDATEID)","idk").get(0);
+	session.put("cid",db_email.get("CANDIDATEID"));
+	session.put("phoneno",db_email.get("Mobile"));
+	// Update session in case of wrong email address [unintended]
+	rep = invokeurl
+	[
+		url :url
+		type :POST
+		headers:{"jsondata":session}
+	];
+	if(db_email.containsKey("message"))
+	{
+		if(answers.containsKey("name") && answers.get("name").get("text").matches("[A-z ]+"))
+		{
+			if(answers.containsKey("resume"))
+			{
+				if(answers.containsKey("phoneno"))
+				{
+					// Add the candidate to recruit db
+					candidatesMap = Map();
+					name = answers.get("name").get("text");
+					// Assuming first and last name given
+					if(!name.contains(" "))
+					{
+						name = name + " ";
+					}
+					name = name.toList(" ");
+					firstName = name.get(0);
+					lastName = "_";
+					phoneno = answers.get("phoneno").get("text").toList(" ");
+					if(name.size() == 2)
+					{
+						lastName = name.get(1);
+					}
+					else if(name.size() > 2)
+					{
+						lastName = name.remove(name.get(1)).toString();
+					}
+					if(phoneno.size() >= 2)
+					{
+						phoneno = phoneno.get(1);
+					}
+					else if(phoneno.size() == 1)
+					{
+						phoneno = phoneno.get(0);
+					}
+					// Data filling and rest dummy
+					candidatesMap.put("First Name",firstName);
+					candidatesMap.put("Last Name",lastName);
+					candidatesMap.put("Email",email);
+					candidatesMap.put("Mobile",phoneno);
+					candidatesMap.put("Experience in years","5");
+					candidatesMap.put("Current Job Title","Assistant Manager");
+					candidatesMap.put("Skill Set",answers.get("resume").get("text"));
+					candidatesMap.put("Experience Details","");
+					candidatesMap.put("Source","SalesIQ");
+					candidatesMap.put("Status","Active");
+					// 					info zoho.recruit.addRecord("Candidates",candidatesMap,2,false,"idk");
+					session.put("addrecord",candidatesMap);
+					// Update once OTP is verifed.
+					cid = zoho.recruit.searchRecords("Candidates","Email|=|" + email,1,3,"(CANDIDATEID)","idk").get(0).get("CANDIDATEID");
+					session.put("cid",cid);
+					// OTP verification time it is
+					otp = randomnumber(1000,9999).floor();
+					session.put("otp",otp);
+					session.put("phoneno",phoneno);
+					session.put("email",email);
+					// Update session
+					rep = invokeurl
+					[
+						url :url
+						type :POST
+						headers:{"jsondata":session}
+					];
+					// send otp via spring edge
+					res = invokeurl
+					[
+						url :"https://instantalerts.co/api/web/send?apikey=6on957rb36978j0rl148a6j226v03jmr&sender=SEDEMO&to=91" + phoneno + "&message=Mobile+Number+verification+code+is+" + otp + "+Do+not+share+it"
+						type :GET
+						connection:"idk"
+					];
+					response.put("context_id","otp");
+					question = {"name":"otp","replies":{{"text":"An OTP has been dispatched. Kindly proceed by entering the code below"}}};
+					question.put("suggestions",{"🔄 Re-send the OTP","📞 Change the phone number"});
+					response.put("questions",{question});
+					return response;
+				}
+				else
+				{
+					// Get the phone number finally
+					question = {"name":"phoneno","input":{"type":"tel","placeholder":"Enter your phone number","value":"123456789","error":{"Enter a valid phone number"}},"replies":{{"text":"Thank you! 🌟 Kindly enter your 10-digit phone number for OTP verification","field_name":"siq_phone"}}};
+					response.put("questions",{question});
+				}
+			}
+			else
+			{
+				// Afer name, get resume
+				question = {"name":"resume","replies":{{"text":"Please attach your resume file here [PDF or Word file only]"}},"input":{"type":"file","min":1,"max":1,"formats":{"doc","docx","pdf"}}};
+				response.put("questions",{question});
+			}
+		}
+		else
+		{
+			text = "Apologies, it appears that there is no account associated. Could you kindly provide your name?";
+			// Checks if name is in proper format
+			if(answers.containsKey("name"))
+			{
+				text = "Please enter valid name using characters and space alone";
+			}
+			// Get the name first
+			question = {"name":"name","replies":{{"text":text,"field_name":"siq_name"}},"input":{"type":"name","placeholder":"Enter your name here"}};
+			response.put("questions",{question});
+		}
+	}
+	else
+	{
+		// Check if existing email is intended
+		shouldReturn = false;
+		if(answers.containsKey("check") && session.get("email_asked"))
+		{
+			val = answers.get("check").get("text");
+			if(!session.get("email_confirm"))
+			{
+				// We have not confirmed yes/no process yet
+				if(val == "No")
+				{
+					session.put("email_asked",false);
+					session.put("email_confirm",true);
+					question = Map();
+					question.put("name","email");
+					question.put("input",{"type":"email","placeholder":"Your email address here","value":session.get("email")});
+					question.put("replies",{{"text":"Please re-enter your email address","validate":{"format":"email","error":{"Please enter a valid email"}},"field_name":"siq_email"}});
+					response.put("questions",{question});
+					shouldReturn = true;
+				}
+				else
+				{
+					session.put("email_asked",false);
+					session.put("email_confirm",false);
+					// If they've already verified once in this session
+					if(session.get("phoneverified").equals(session.get("phoneno")))
+					{
+						// Enroll!
+						jobId = session.get("jobid");
+						cId = session.get("cid");
+						getToken = invokeurl
+						[
+							url :"https://accounts.zoho.in/oauth/v2/token?grant_type=refresh_token&client_id=1000.1BT2FTEVA1IF95KB2WSVVAMGHITS6G&client_secret=e7768e93377b9ee8416dce11d564269c1cbf9f8de9&refresh_token=1000.55edd6d022f10fe278446bd496ae7242.eb6dad64a7eb9ab9bfb5de56c73fcd05"
+							type :POST
+						];
+						oauthToken = getToken.get("access_token");
+						candidateIds = {cId};
+						jobOpeningIds = {jobId};
+						comments = "Record successfully associated";
+						// Construct the API endpoint for associating candidates with job openings
+						apiEndpoint = "https://recruit.zoho.in/recruit/v2/Candidates/actions/associate";
+						// Create the request headers
+						headers = Map();
+						headers.put("Authorization","Zoho-oauthtoken " + oauthToken);
+						// Construct the request body
+						requestData = Map();
+						candidateData = Map();
+						candidateData.put("jobids",jobOpeningIds);
+						candidateData.put("ids",candidateIds);
+						candidateData.put("comments",comments);
+						requestData.put("data",{candidateData});
+						// Make the API request
+						a = invokeurl
+						[
+							url :apiEndpoint
+							type :PUT
+							parameters:requestData.toString()
+							headers:headers
+							connection:"idk"
+						];
+						output = "Successfully enrolled!";
+						if(a.get("data").get("0").get("code").equalsIgnoreCase("FAILURE") || a.get("data").get("0").get("status").equals("error"))
+						{
+							if(a.get("data").get("0").get("details").containsKey("error"))
+							{
+								output = "Failed, " + a.get("data").get("0").get("details").get("error").get(0).get("message");
+							}
+							else
+							{
+								output = "Failed, " + a.get("data").get("0").get("message") + " | Due to free tier plan limitation in Zoho Recruit, this may occur";
+							}
+						}
+						info a;
+						response.put("action","reply");
+						response.put("replies",{output});
+						response.put("suggestions",{"Okay"});
+						return response;
+					}
+				}
+			}
+		}
+		else
+		{
+			// Haven't asked for email check yet
+			session.put("email_asked",true);
+			session.put("email_confirm",false);
+			question = {"name":"check","replies":{"Name : " + db_email.get("First Name"),"Phone number : " + "+91xxxxxx" + db_email.get("Mobile").toString().mid(6,10),"Does the provided information match your details?"},"suggestions":{"Yes","No"}};
+			response.put("questions",{question});
+			shouldReturn = true;
+		}
+		// Update session
+		rep = invokeurl
+		[
+			url :url
+			type :POST
+			headers:{"jsondata":session}
+		];
+		// To update the email confirmation
+		if(shouldReturn)
+		{
+			return response;
+		}
+		// Now the email and account is intended by user
+		// OTP verification
+		otp = randomnumber(1000,9999).floor();
+		info otp;
+		session.put("otp",otp);
+		session.put("addrecord","");
+		rep = invokeurl
+		[
+			url :url
+			type :POST
+			headers:{"jsondata":session}
+		];
+		res = invokeurl
+		[
+			url :"https://instantalerts.co/api/web/send?apikey=6on957rb36978j0rl148a6j226v03jmr&sender=SEDEMO&to=91" + db_email.get("Mobile") + "&message=Mobile+Number+verification+code+is+" + otp + "+Do+not+share+it"
+			type :GET
+			connection:"idk"
+		];
+		response.put("context_id","otp");
+		question = {"name":"otp","replies":{{"text":"Welcome back, " + db_email.get("First Name") + "! 🌟 You have already sent us the resume."},{"text":"An OTP has been sent to your verified phone number. Please enter it here."}}};
+		question.put("suggestions",{"🔄 Re-send the OTP","📞 Change the phone number","✅ Mobile number already verified"});
+		response.put("questions",{question});
+	}
+}
+else if(context_id.contains("otp"))
+{
+	// Check if phone no changed
+	if(session.containsKey("changePhonenoFlag"))
+	{
+		session.remove("changePhonenoFlag");
+		session.put("havechangedphoneno",true);
+		// Obtaining the phone number [i.e, removing prefix]
+		phoneno = answers.get("phoneno").get("text").toList(" ");
+		if(phoneno.size() >= 2)
+		{
+			phoneno = phoneno.get(1);
+		}
+		else if(phoneno.size() == 1)
+		{
+			phoneno = phoneno.get(0);
+		}
+		// Updating the values
+		if(session.containsKey("addrecord"))
+		{
+			record = session.get("addrecord");
+			record.put("Mobile",phoneno);
+			session.put("addrecord",record);
+		}
+		session.put("phoneno",phoneno);
+	}
+	otpText = answers.get("otp").get("text");
+	question = Map();
+	if(otpText.equals("🔄 Re-send the OTP") || session.containsKey("resendSmsFlag"))
+	{
+		session.remove("resendSmsFlag");
+		res = invokeurl
+		[
+			url :"https://instantalerts.co/api/web/send?apikey=6on957rb36978j0rl148a6j226v03jmr&sender=SEDEMO&to=91" + session.get("phoneno") + "&message=Mobile+Number+verification+code+is+" + session.get("otp") + "+Do+not+share+it"
+			type :GET
+			connection:"idk"
+		];
+		question.put("name","otp");
+		question.put("replies",{{"text":"Sent the OTP to +91-" + session.get("phoneno") + " phone number | pssh, if otp service down here it is : " + session.get("otp").toString()}});
+		question.put("suggestions",{"🔄 Re-send the OTP","📞 Change the phone number"});
+		response.put("questions",{question});
+	}
+	else if(otpText.equals("📞 Change the phone number") || session.containsKey("changePhonenoFlag"))
+	{
+		// Allow user only if they're signing up
+		info session;
+		if(!session.get("addrecord").toString().equals(""))
+		{
+			session.put("resendSmsFlag",true);
+			session.put("changePhonenoFlag",true);
+			question = {"name":"phoneno","input":{"type":"tel","placeholder":"Enter your phone number","value":"123456789","error":{"Enter a valid phone number"}},"replies":{{"text":"Kindly enter your 10-digit phone number for OTP verification","field_name":"siq_phone"}}};
+		}
+		else
+		{
+			question.put("name","otp");
+			question.put("replies",{{"text":"Apologies, it seems your account already has registered phone number, you can't change the verified phone number."}});
+			question.put("suggestions",{"🔄 Re-send the OTP"});
+		}
+		response.put("questions",{question});
+	}
+	else if(otpText.equals(session.get("otp")) || session.get("phoneverified").equals(session.get("phoneno")))
+	{
+		// alright, account is now verified
+		// registering the account if required
+		if(session.get("addrecord"))
+		{
+			info "adding record";
+			info zoho.recruit.addRecord("Candidates",session.get("addrecord"),2,false,"idk");
+			db_cand = zoho.recruit.searchRecords("Candidates","Email|=|" + session.get("email"),1,199,"(CANDIDATEID)","idk").get(0).get("CANDIDATEID");
+			session.put("cid",db_cand);
+		}
+		// Updating the session
+		info session;
+		session.put("phoneverified",session.get("phoneno"));
+		// Get the token using refresh token since there's no direct API here [i.e, associate]
+		jobId = session.get("jobid");
+		cId = session.get("cid");
+		getToken = invokeurl
+		[
+			url :"https://accounts.zoho.in/oauth/v2/token?grant_type=refresh_token&client_id=1000.1BT2FTEVA1IF95KB2WSVVAMGHITS6G&client_secret=e7768e93377b9ee8416dce11d564269c1cbf9f8de9&refresh_token=1000.55edd6d022f10fe278446bd496ae7242.eb6dad64a7eb9ab9bfb5de56c73fcd05"
+			type :POST
+		];
+		oauthToken = getToken.get("access_token");
+		candidateIds = {cId};
+		jobOpeningIds = {jobId};
+		comments = "Record successfully associated";
+		// Construct the API endpoint for associating candidates with job openings
+		apiEndpoint = "https://recruit.zoho.in/recruit/v2/Candidates/actions/associate";
+		// Create the request headers
+		headers = Map();
+		headers.put("Authorization","Zoho-oauthtoken " + oauthToken);
+		// Construct the request body
+		requestData = Map();
+		candidateData = Map();
+		candidateData.put("jobids",jobOpeningIds);
+		candidateData.put("ids",candidateIds);
+		candidateData.put("comments",comments);
+		requestData.put("data",{candidateData});
+		// Make the API request
+		a = invokeurl
+		[
+			url :apiEndpoint
+			type :PUT
+			parameters:requestData.toString()
+			headers:headers
+			connection:"idk"
+		];
+		output = "Successfully enrolled!";
+		if(a.get("data").get("0").get("code").equalsIgnoreCase("FAILURE") || a.get("data").get("0").get("status").equals("error"))
+		{
+			if(a.get("data").get("0").get("details").containsKey("error"))
+			{
+				output = "Failed, " + a.get("data").get("0").get("details").get("error").get(0).get("message");
+			}
+			else
+			{
+				output = "Failed, " + a.get("data").get("0").get("message") + " | Due to free tier plan in Zoho Recruit, this may occur";
+			}
+		}
+		info a;
+		response.put("action","reply");
+		response.put("replies",{output});
+		response.put("suggestions",{"Okay"});
+	}
+	else if(otpText.equals("✅ Mobile number already verified"))
+	{
+		question.put("name","otp");
+		question.put("replies",{{"text":"You have not verified any mobile number for the current email address yet."},{"text":"You can use this feature when you've entered OTP within this session and want to enroll for multiple job openings"}});
+		question.put("suggestions",{"🔄 Re-send the OTP","📞 Change the phone number","✅ Mobile number already verified"});
+		response.put("questions",{question});
+	}
+	else
+	{
+		question.put("name","otp");
+		question.put("replies",{{"text":"⚠️ Invalid OTP / Input"}});
+		question.put("suggestions",{"🔄 Re-send the OTP","📞 Change the phone number"});
+		response.put("questions",{question});
+	}
+	// Update the session
+	rep = invokeurl
+	[
+		url :url
+		type :POST
+		headers:{"jsondata":session}
+	];
+	return response;
+}
+else if(context_id.contains("existing"))
+{
+	email = answers.get("email").get("text");
+	db_cand = zoho.recruit.searchRecords("Candidates","Email|=|" + email,1,199,"(First Name,Mobile,CANDIDATEID)","idk").get(0);
+	if(db_cand.containsKey("code"))
+	{
+		response.put("action","reply");
+		response.put("replies",{"No such account found in database with assoicated email!"});
+		response.put("suggestions",{"Okay"});
+		return response;
+	}
+	// Check if any assoicated opening jobs exist
+	getToken = invokeurl
+	[
+		url :"https://accounts.zoho.in/oauth/v2/token?grant_type=refresh_token&client_id=1000.1BT2FTEVA1IF95KB2WSVVAMGHITS6G&client_secret=e7768e93377b9ee8416dce11d564269c1cbf9f8de9&refresh_token=1000.55edd6d022f10fe278446bd496ae7242.eb6dad64a7eb9ab9bfb5de56c73fcd05"
+		type :POST
+	];
+	oauthToken = getToken.get("access_token");
+	candidateIds = db_cand.get("CANDIDATEID");
+	// Construct the API endpoint for associating candidates with job openings
+	apiEndpoint = "https://recruit.zoho.in/recruit/v2/Candidates/" + candidateIds + "/associate";
+	// Create the request headers
+	headers = Map();
+	headers.put("Authorization","Zoho-oauthtoken " + oauthToken);
+	// Make the API request
+	ass = invokeurl
+	[
+		url :apiEndpoint
+		type :GET
+		headers:headers
+		connection:"idk"
+	];
+	if(isNull(ass))
+	{
+		response.put("action","reply");
+		response.put("replies",{"Welcome back, " + db_cand.get("First Name") + "! 🌟 You have not enrolled in any jobs yet."});
+		response.put("suggestions",{"Okay"});
+		return response;
+	}
+	// Display the jobs assoicated with the candidates
+	i = 0;
+	outputImages = List();
+	outputImages.add("https://programiz.pro/resources/content/images/2023/04/software-engineer-daily-tasks-1.png");
+	outputImages.add("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTu85X_o--brnMN3L1sZJ1WwymimuAMWamOmL8P8vsl-qNmC7imB93oMsAhcEbl1jCH-dw&usqp=CAU");
+	outputImages.add("https://media.licdn.com/dms/image/D5612AQEBp4IqI6CKQw/article-cover_image-shrink_720_1280/0/1664264441530?e=2147483647&v=beta&t=6hHX46XKdVibYf2DjQZhIEKqCfEd8WjJUlSbazN0WmY");
+	outputImages.add("https://www.interviewbit.com/blog/wp-content/uploads/2021/07/Software-Engineer-Salary-in-India-800x391.jpg");
+	outputImages.add("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgBiqT_L-HK1UooSWkC0jq15Q145mKLyV_fPbViDlUD4eL3qtVYJ41M7KeR6xMa2Q3FfU&usqp=CAU");
+	// Time to display it on cards
+	elements = List();
+	info ass;
+	for each  x in ass.get("data")
+	{
+		val = Map();
+		val.put("title",x.get("Client_Name").get("name"));
+		val.put("subtitle",x.get("Posting_Title"));
+		val.put("image",outputImages.get(i % 4));
+		cardelements = list();
+		toShow = {"Application_Status","Modified_Time","Target_Date","Date_Opened"};
+		for each  title in toShow
+		{
+			elementMap = Map();
+			elementMap.put("label",title.replaceAll("_"," ").replaceAll("Modified Time","Enrolled Date") + " : " + x.get(title).replaceAll("T","      "));
+			elementMap.put("name",title.replaceAll("_"," "));
+			elementMap.put("type","client_action");
+			elementMap.put("clientaction_name","reply");
+			cardelements.add(elementMap);
+		}
+		val.put("actions",cardelements);
+		i = i + 1;
+		elements.add(val);
+	}
+	questions.put("name","status");
+	questions.put("replies",{{"type":"multiple-product","text":"Alright, here's your status","elements":elements}});
+	questions.put("suggestions",{"Okay"});
+	response.put("questions",{questions});
+	if(answers.containsKey("status"))
+	{
+		// Back to menu
+		response.put("action","reply");
+		response.put("replies",{"Rolling back to menu!"});
+		response.put("suggestions",{"Huh?"});
+	}
+}
+return response;
