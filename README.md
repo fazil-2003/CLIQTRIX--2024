@@ -48,10 +48,7 @@ Focus on providing a seamless and enjoyable user experience. Data Security:
 Implements secure phone number verification for user authentication.
 
 #FINAL UI:
-<video width="640" height="360" controls>
-  <source src="https://github-production-user-asset-6210df.s3.amazonaws.com/110767452/361355613-f21ee53c-73dd-444a-9a09-ef67aa718025.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20240826%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20240826T075308Z&X-Amz-Expires=300&X-Amz-Signature=bc1d09557f6ddba39a24c64929a85e96cb969bc9bcb30848369034759fd52640&X-Amz-SignedHeaders=host&actor_id=110767452&key_id=0&repo_id=733316714" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+https://github.com/user-attachments/assets/79bf3dae-c237-4fba-b2f8-e9ca809bec96
 
 ##Conclusion:
 Our Zoho Cliqtrix bot for HR hiring purposes is a testament to our commitment to innovation and efficiency. By combining the power of Zoho Cliqtrix and our development skills, we've created a tool that simplifies the hiring process for both users and HR professionals.
